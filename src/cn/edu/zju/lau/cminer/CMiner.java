@@ -6,9 +6,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.zju.lau.cminer.model.Rule;
+
+/**
+ * 挖掘序列中事件（字符）的关联关系
+ * 实现《C-Miner: Mining Block Correlations in Storage Systems》中所述的C-Miner算法结果，但具体生成算法不同
+ * @author yuki lau
+ * @date 2013-11-06
+ */
 public class CMiner {
 	
-	// 存储不同长度的frequent subsequence，例如 ：
+	// 存储不同长度的frequent subsequence，Map<长度, Map<序列, Support值>>，例如 ：
 	//     frequent subsequence: {abc=4, b=4, c=5, a=5, ac=5, ab=4, bc=4}
 	//	   Subsequence Tier：{1={b=4, c=5, a=5}, 2={ac=5, ab=4, bc=4}, 3={abc=4}}
 	private Map<Integer, Map<String, Integer>> subsequenceTier = new HashMap<Integer, Map<String, Integer>>();
@@ -37,7 +45,7 @@ public class CMiner {
 	}
 	
 	/**
-	 * 产生候选子序列集合，满足：
+	 * 产生候选频繁子序列集合（Frequent Subsequences），满足：
 	 * 		1）相距不大于maxGap的访问子序列（没必要连续）
 	 * 		2）出现次数满足frequent要求，即不小于minSupport
 	 * 
@@ -45,7 +53,7 @@ public class CMiner {
 	 * @param windowSize 	窗口大小，每个片段的长度
 	 * @param maxGap		序列中最大的访问间距
 	 * @param minSupport	序列最小发生次数
-	 * @return	candidate frequent subsequences
+	 * @return	candidate frequent subsequences Map<序列, Support值>
 	 */
 	public Map<String, Integer> candidateFreSubsequences(List<String> accessSegments, int windowSize, int maxGap, int minSupport){
 		
@@ -143,7 +151,12 @@ public class CMiner {
 	}
 	
 	/**
-	 * 从候选子序列中挑选出满足Closed性质的子序列，完成最终关联子序列挖掘
+	 * 产生Closed Frequent Subsequences，满足：
+	 * 		1. 是候选频繁子序列（Frequent Subsequences）的子集
+	 * 		2. 满足Closed条件：与所有super-subsequences的support不同
+	 * 
+	 * @param subSequences	候选频繁子序列集合（Frequent Subsequences）
+	 * @return	Closed Frequent Subsequences，Map<序列, Support值>
 	 */
 	public Map<String, Integer> closedFreSubsequences(Map<String, Integer> subSequences){
 		
@@ -162,13 +175,13 @@ public class CMiner {
 			// closed条件：
 			// 不是任何frequent subsequence的子序列
 			// 或
-			// 是子序列 && confidence 与 大于父序列的confidence
+			// 是子序列 && support 与 大于父序列的support
 			else{
 				// 依次检查当前层每一个序列
 				for(Map.Entry<String, Integer> entry: this.subsequenceTier.get(i).entrySet()){
 					boolean isSubSubseq = false;
 					
-					// 当前序列 与 其父层（直接父序列）中每一个序列的关系：是否为子序列、confidence大小关系
+					// 当前序列 与 其父层（直接父序列）中每一个序列的关系：是否为子序列、support大小关系
 					for(Map.Entry<String, Integer> superEntry: this.subsequenceTier.get(i + 1).entrySet()){
 						
 						// 是子序列
@@ -176,7 +189,7 @@ public class CMiner {
 							
 							isSubSubseq = true;
 							
-							// 大于所有父序列的confidence
+							// 大于所有父序列的support
 							if(entry.getValue() > superEntry.getValue()){
 								closedSubSequences.put(entry.getKey(), entry.getValue());
 								
@@ -196,8 +209,6 @@ public class CMiner {
 					if(!isSubSubseq){
 						closedSubSequences.put(entry.getKey(), entry.getValue());
 					}
-					
-					System.out.println(closedSubSequences);
 				}
 			}
 		}
@@ -206,9 +217,80 @@ public class CMiner {
 	}
 	
 	/**
-	 * 从最终关联子序列中生成correlation rules，同时进行rules的最小化工作。
+	 * 生成关联规则，满足：
+	 * 		1. 规则格式：子序列（长度>=1） -> 后续子序列（长度=1）
+	 * 		2. 从Closed Frequent Subsequences中生成
+	 * 		3. 每个Rule的confidence不小于minConfidence
+	 * 		4. 多个Closed Frequent Subsequences产生相同的rule，取最大support作为rule的support
+	 * @param subSequences			频繁子序列，用于查找support	
+	 * @param closedSubSequences	Closed频繁子序列，用于生成rule
+	 * @param minConfidence			Rule的最小confidence，用于过滤Rule
+	 * @return	correlation rules, Map<Rule表达式，Rule对象>
 	 */
-	public void generateRules(){
+	public Map<String, Rule> generateRules(Map<String, Integer> subSequences, Map<String, Integer> closedSubSequences, float minConfidence){
 		
+		Map<String, Rule> rules = new HashMap<String, Rule>();
+		
+		// 依次处理每一个closed frequent subsequence，获取rules
+		for(Map.Entry<String, Integer> closedEntry: closedSubSequences.entrySet()){
+			
+			String closedSeq = closedEntry.getKey();
+			int closedSeqConf = closedEntry.getValue();
+			
+			// 只有一个字符序列，无法导出关系，跳过
+			if(closedSeq.length() <= 1){
+				continue;
+			}
+
+			// 开始生成rule
+			for(int historyStart = 0; historyStart < closedSeq.length() - 1; historyStart++){
+			
+				// 生成history子序列
+				for(int historyEnd = historyStart + 1; historyEnd < closedSeq.length(); historyEnd++){
+				
+					String history = closedSeq.substring(historyStart, historyEnd);
+					float historyConf = subSequences.get(history) * 1.0F;
+				
+					// 生成prediction子序列（只有一个字符）
+					for(int predictionStart = historyEnd; predictionStart < closedSeq.length(); predictionStart++){
+						
+						String prediction = closedSeq.substring(predictionStart, predictionStart + 1);
+						float newRuleConf = subSequences.get(prediction) / historyConf;
+						
+						// 当前规则confidence不够，跳过
+						if(newRuleConf < minConfidence){
+							continue;
+						}
+						
+						String ruleStr = history + "|" + prediction;
+						if(rules.get(ruleStr) == null){
+							rules.put(ruleStr, new Rule(history, prediction, closedSeqConf, newRuleConf));
+						}
+						else{
+							if(rules.get(ruleStr).getSupport() < closedSeqConf){
+								rules.get(ruleStr).setSupport(closedSeqConf);
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		return rules;
+	}
+	
+	public Map<String, Rule> startMining(String sequence, int windowSize, int maxGap, int minSupport, float minConfidence){
+
+		// 对初始访问序列分段
+		List<String> accessSegments = cutAccessSequence(sequence, windowSize);
+		
+		// 挖掘：频繁子序列
+		Map<String, Integer> freSubseq = candidateFreSubsequences(accessSegments, windowSize, maxGap, minSupport);
+		
+		// 过滤：Closed频繁子序列
+		Map<String, Integer> closedFreSubseq = closedFreSubsequences(freSubseq);
+		
+		// 生成：关联规则
+		return generateRules(freSubseq, closedFreSubseq, minConfidence);
 	}
 }
