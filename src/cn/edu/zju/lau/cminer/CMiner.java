@@ -85,16 +85,18 @@ public class CMiner {
 						}
 						
 						// 这个POS的判断：
-						// 1. 包含该prefix中的所有字符即可
+						// 1. 顺序（非连续）包含该prefix中的所有字符即可
 						// 2. POS的值为prefix中最后一个字符在segment中的后一个位置
 						int pos = -1;
+						int lastPos = -1;
 						for(char c: prefix.toCharArray()){
+							lastPos = pos;
 							pos = segment.indexOf(c);
-							if(pos < 0){
+							if(pos < 0 || pos <= lastPos){
 								break;
 							}
 						}
-						if(pos < 0){
+						if(pos < 0 || pos <= lastPos){
 							continue;
 						}
 						
@@ -121,29 +123,23 @@ public class CMiner {
 				} 
 	        }  
 	        
-	        // 将newSequences添加到subSequences中
+	        
+	        // 添加层次为currentSeqLen的subsequenceTier元素
+	        Map<String, Integer> tierMap = new HashMap<String, Integer>();
+	        subsequenceTier.put(currentSeqLen, tierMap);
+	        
+	        // 将newSequences添加到subSequences、根据subSequence长度划分的Map中
 	        for(Map.Entry<String, Integer> entry: newSequences.entrySet()){
 	        	
 	        	subSequences.put(entry.getKey(), entry.getValue());
 	        	
 	        	// 对得到的frequent subsequence根据subsequence的长度进行分组
-	        	int keyLength = entry.getKey().length();
-	        	if(subsequenceTier.containsKey(keyLength)){
-	        		subsequenceTier.get(keyLength).put(entry.getKey(), entry.getValue());
-	        	}
-	        	else{
-	        		Map<String, Integer> tierMap = new HashMap<String, Integer>();
-	        		tierMap.put(entry.getKey(), entry.getValue());
-	        		subsequenceTier.put(keyLength, tierMap);
-	        	}
-	        	
-	        	// 更新最长序列的长度记录
-	        	if(keyLength > maxSeqLength){
-	        		maxSeqLength = keyLength;
-	        	}
-	        	
+	        	subsequenceTier.get(currentSeqLen).put(entry.getKey(), entry.getValue());
 	        }
 	        
+	        // 更新最长序列的长度记录
+        	maxSeqLength = currentSeqLen;
+        	
 	        newSequences.clear();
 		}
 
@@ -292,5 +288,12 @@ public class CMiner {
 		
 		// 生成：关联规则
 		return generateRules(freSubseq, closedFreSubseq, minConfidence);
+	}
+	
+	/**
+	 * 清除MAP对象占用的空间
+	 */
+	public void clear(){
+		subsequenceTier.clear();
 	}
 }

@@ -18,28 +18,34 @@ public class CMinerTest {
 	
 	public static void main(String[] args){
 
-		String sequence = getRandomStr(409); //"abcedabcefagbchabijcaklcijcaklc";
-		int windowSize = 50;
-		int maxGap = 5;
+//		String sequence = getRandomStr(409); 
+//		String sequence = "abcedabcefagbchabijcaklc";
+		int windowSize = 5;
+		int maxGap = 3;
 		int minSupport = 4;
 		float minConfidence = 1.0F;
 		
 		// 输出关联关系挖掘过程中的每一步中间结果
-		// testByStep(sequence, windowSize, maxGap, minSupport, minConfidence);
+//		testByStep(sequence, windowSize, maxGap, minSupport, minConfidence);
 		
 		// 直接挖掘关联序列
-		long start = System.currentTimeMillis();
-		Map<String, Rule> rules = miner.startMining(sequence, windowSize, maxGap, minSupport, minConfidence);
-		long end = System.currentTimeMillis();
-		
-		System.out.println("\n======== Generating Correlation Rules ========");
-		System.out.println("Sequence: \t" + sequence);
-		System.out.println("Max Gap: \t" + maxGap);
-		System.out.println("Min Support: \t" + minSupport);
-		System.out.println("Min Confidence: " + minConfidence);
-		System.out.println("Run Time: \t" + (end - start)/1000.0 + "s");
-		System.out.println("Rules: ");
-		System.out.println(rules);
+		for(int i = 1; i <= 10; i++){
+			
+			String sequence = getRandomStr(i * 100);
+			
+			long start = System.currentTimeMillis();
+			miner.startMining(sequence, windowSize, maxGap, minSupport, minConfidence);
+			long end = System.currentTimeMillis();
+
+			System.out.println("\n======== Generating Correlation Rules ========");
+			System.out.println("Sequence Length: \t" + sequence.length());
+			System.out.println("Max Gap: \t" + maxGap);
+			System.out.println("Min Support: \t" + minSupport);
+			System.out.println("Min Confidence: " + minConfidence);
+			System.out.println("Run Time: \t" + (end - start)/1000.0 + "s");
+			
+			miner.clear();
+		}
 		
 	}
 	
@@ -54,32 +60,27 @@ public class CMinerTest {
 	public static void testByStep(String sequence, int windowSize, int maxGap, int minSupport, float minConfidence){
 		// 分段：对初始访问序列
 		List<String> accessSegments = miner.cutAccessSequence(sequence, windowSize);
-		System.out.println("\n======== Cut Access Sequence ========");
-		System.out.println("Sequence: \t" + sequence);
-		System.out.println("Window size: \t" + windowSize);
-		System.out.println(accessSegments);
 		
 		// 挖掘：频繁子序列
 		Map<String, Integer> freSubseq = miner.candidateFreSubsequences(accessSegments, windowSize, maxGap, minSupport);
-		System.out.println("\n======== Mining Frequent Subsequences ========");
-		System.out.println("Max Gap: \t" + maxGap);
-		System.out.println("Min Support: \t" + minSupport);
-		System.out.println(freSubseq);
 		
 		// 过滤：Closed频繁子序列
 		Map<String, Integer> closedFreSubseq = miner.closedFreSubsequences(freSubseq);
-		System.out.println("\n======== Filtering Closed Frequent Subsequences ========");
-		System.out.println("Sequence: \t" + sequence);
-		System.out.println("Access Segments: \t" + accessSegments);
-		System.out.println("Frequent Subsequences: \t" + freSubseq);
-		System.out.println(closedFreSubseq);
 		
 		// 生成：关联规则
 		Map<String, Rule> rules = miner.generateRules(freSubseq, closedFreSubseq, minConfidence);
 		System.out.println("\n======== Generating Correlation Rules ========");
-		System.out.println("Frequent Subsequences: \t" + freSubseq);
+		System.out.println("Window size: \t" + windowSize);
+		System.out.println("Max Gap: \t" + maxGap);
+		System.out.println("Min Support: \t" + minSupport);
+		System.out.println("Sequence: \t\t\t" + sequence);
+		System.out.println("Access Segments: \t\t" + accessSegments);
+		System.out.println("Frequent Subsequences: \t\t" + freSubseq);
 		System.out.println("Closed Frequent Subsequences: \t" + closedFreSubseq);
-		System.out.println(rules);
+		System.out.println("Rules: \t");
+		for(Map.Entry<String, Rule> rule: rules.entrySet()){
+			System.out.println(rule);
+		}
 	}
 	
 	/**
