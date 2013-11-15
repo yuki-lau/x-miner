@@ -10,7 +10,8 @@ import cn.edu.zju.lau.cminer.model.Rule;
 
 /**
  * 挖掘序列中事件（字符）的关联关系
- * 实现《C-Miner: Mining Block Correlations in Storage Systems》中所述的C-Miner算法结果，但具体生成算法不同
+ * 实现《C-Miner: Mining Block Correlations in Storage Systems》中所述的C-Miner算法结果，
+ * 但具体生成Closed Frequent Subsequences算法不同。
  * @author yuki lau
  * @date 2013-11-06
  */
