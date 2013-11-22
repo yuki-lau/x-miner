@@ -14,7 +14,7 @@ import cn.edu.zju.lau.utils.Utils;
  */
 public class CMinerAutorTest {
 
-	private static CMinerAuthor miner = new CMinerAuthor();;
+	private static CMinerAuthor miner = new CMinerAuthor();
 	
 	public static void main(String[] args){
 
