@@ -86,7 +86,7 @@ public class FileAccessLog {
 	    sb.append("\n=======================\n");
 	    return sb.toString();
 	}
-	
+
 	public Date getTimeDate(){
 		if(timeDate == null){
 			if(time == null){

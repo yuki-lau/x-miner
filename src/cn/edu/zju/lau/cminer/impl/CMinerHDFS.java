@@ -387,7 +387,8 @@ public class CMinerHDFS{
 						}
 						
 						// 关联规则生成成功，放入规则集合中
-						String ruleStr = historyStr + "->" + prediction;
+						// String ruleStr = historyStr + "->" + prediction;
+						String ruleStr = historyStr;
 						if(rules.get(ruleStr) == null){
 							rules.put(ruleStr, new HDFSRule(historyList, prediction, closedSeqConf, newRuleConf));
 						}

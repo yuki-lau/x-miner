@@ -6,9 +6,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import cn.edu.zju.lau.cminer.impl.CMinerHDFS;
 import cn.edu.zju.lau.cminer.model.FileAccessLog;
+import cn.edu.zju.lau.cminer.model.HDFSRule;
 import cn.edu.zju.lau.cminer.model.HDFSSubseqSuffix;
 
 /**
@@ -18,7 +20,7 @@ import cn.edu.zju.lau.cminer.model.HDFSSubseqSuffix;
  */
 public class CMinerHDFSTest {
 	
-	private static final String LOG_PATH = "data/audit.log";
+	private static final String LOG_PATH = "D://audit.log";
 	private static CMinerHDFS miner = new CMinerHDFS();
 	
 	public static void main(String[] args){
@@ -47,7 +49,7 @@ public class CMinerHDFSTest {
 	 * @param filePath
 	 * @return
 	 */
-	private static List<FileAccessLog> getLogs(String filePath){
+	public static List<FileAccessLog> getLogs(String filePath){
 		
 		List<FileAccessLog> logs = new ArrayList<FileAccessLog>();
 		File file = new File(filePath);
@@ -85,31 +87,54 @@ public class CMinerHDFSTest {
 	 */
 	public static void testByStep(String filePath){
 		
+		miner.setMinSupport(3);
+		miner.setWindowSize(26);
+		
 		// 读取文件
 		List<FileAccessLog> logs = getLogs(filePath);
 		miner.setInputSequence(logs);
-		System.out.println(logs);
+		System.out.println("** input sequence:");
+		for(int i = 0; i < logs.size(); i++){
+			logs.get(i).setSrc(logs.get(i).getSrc().split("/user/root/input/sogou/query-log-")[1]);
+			System.out.print(logs.get(i).getSrc() + ", ");
+		}
+		System.out.println();
 		
 		// 对文件访问日志分段
 		miner.cutAccessSequence();
-		System.out.println(miner.getInputSegments());
+		System.out.println("** input segments:");
+		List<List<FileAccessLog>> segments = miner.getInputSegments();
+		for(int i = 0; i < segments.size(); i++){
+			List<FileAccessLog> segment = segments.get(i);
+			for(int j = 0; j < segment.size(); j++){
+				System.out.print(segment.get(j).getSrc() + " ");
+			}
+			System.out.print(", ");
+		}
+		System.out.println();
 		
 		// 获取长度为1的频繁序列
 		miner.generateFirstDs();
-		System.out.println(miner.getDs());
+		// System.out.println(miner.getDs());
 		
 		// 挖掘：频繁子序列
 		HDFSSubseqSuffix ss = miner.getSeqFromDs();
 		miner.candidateFreSubsequences(ss.getSubsequence(), ss.getOccurTimes());
+		System.out.println("** frequent subsequences:");
 		System.out.println(miner.getFreSubsequences());
 
 		// 过滤：Closed频繁子序列
 		miner.closedFreSubsequences();
+		System.out.println("** closed frequent subsequences:");
 		System.out.println(miner.getClosedFreSubsequences());
 		
 		// 生成：关联规则
 		miner.generateRules();
-		System.out.println(miner.getRules());
+		System.out.println("** rules:");
+		for(Map.Entry<String, HDFSRule> entry: miner.getRules().entrySet()){
+			System.out.println(entry.getKey());
+		}
+		System.out.println();
 		
 		miner.clear();
 	}
