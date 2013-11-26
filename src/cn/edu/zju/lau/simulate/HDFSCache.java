@@ -112,27 +112,61 @@ public class HDFSCache {
 		return cache.contains(file);
 	}
 	
+	public void clear(){
+		this.cache.clear();
+	}
+	
 	public static void main(String[] args){
 		
 		String logPath = "D://audit.log";
 		CMinerHDFS miner = new CMinerHDFS();
-
+		
+		// 读取待分析日志
 		List<FileAccessLog> logs = CMinerHDFSTest.getLogs(logPath);
 		miner.setInputSequence(logs);
+		System.out.println("Log Size:\t" +logs.size());
+		
+		// 根据日志生成规则
 		Map<String, HDFSRule> rules = miner.startMining();
-		
-		HDFSCache cache = new HDFSCache(rules, 20, 3);
-		
+		System.out.println("Rule Size:\t" +rules.size());
 		System.out.println("** rules:");
 		for(Map.Entry<String, HDFSRule> entry: rules.entrySet()){
-			System.out.println(entry.getKey() + "->" + entry.getValue().getPrediction());
+			System.out.println(entry.getKey() + " -> " + entry.getValue().getPrediction());
 		}
 		System.out.println();
 		
+		// 使用规则创建预测Cache
+		int cacheSize = 150;
+		int maxGap = miner.getMaxGap();
+		HDFSCache cache = new HDFSCache(rules, cacheSize, maxGap);
+		System.out.println("Cache Size:\t\t" + cacheSize);
+		
+		// CMiner预测读取
+		int predictHitCount = 0;
 		for(int i = 0; i < logs.size(); i++){
-			System.out.print(logs.get(i).getSrc()+ "\t");
-			System.out.println(cache.predictNext(logs.get(i).getSrc()));
+			String file = logs.get(i).getSrc();
+			if(cache.isHit(file)){
+				predictHitCount++;
+			}
+			cache.add(file);
+			String predictFile = cache.predictNext(file);
+			if(!StringUtils.isEmpty(predictFile)){
+				cache.add(predictFile);
+			}
 		}
+		System.out.println("Predict Hit Rate:\t" + predictHitCount * 1.0 / logs.size());
+		cache.clear();
+		
+		// 无预测读取
+		int hitCount = 0;
+		for(int i = 0; i < logs.size(); i++){
+			String file = logs.get(i).getSrc();
+			if(cache.isHit(file)){
+				hitCount++;
+			}
+			cache.add(file);
+		}
+		System.out.println("Non-Predict Hit Rate:\t" + hitCount * 1.0 / logs.size());
 		
 		miner.clear();
 	}
