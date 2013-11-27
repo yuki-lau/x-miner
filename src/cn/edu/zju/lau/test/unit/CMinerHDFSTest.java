@@ -1,4 +1,4 @@
-package cn.edu.zju.lau.test;
+package cn.edu.zju.lau.test.unit;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,10 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.zju.lau.cminer.impl.CMinerHDFS;
-import cn.edu.zju.lau.cminer.model.FileAccessLog;
-import cn.edu.zju.lau.cminer.model.HDFSRule;
-import cn.edu.zju.lau.cminer.model.HDFSSubseqSuffix;
+import cn.edu.zju.lau.cminer.impl.hdfs.CMinerHDFS;
+import cn.edu.zju.lau.cminer.model.hdfs.FileAccessLog;
+import cn.edu.zju.lau.cminer.model.hdfs.HDFSRule;
+import cn.edu.zju.lau.cminer.model.hdfs.HDFSSubseqSuffix;
 
 /**
  * CMinerHDFS测试类
@@ -49,9 +49,10 @@ public class CMinerHDFSTest {
 	 * @param filePath
 	 * @return
 	 */
-	public static List<FileAccessLog> getLogs(String filePath){
+	public static List<String> getLogs(String filePath){
 		
-		List<FileAccessLog> logs = new ArrayList<FileAccessLog>();
+		List<String> logs = new ArrayList<String>();
+
 		File file = new File(filePath);
         BufferedReader reader = null;
         
@@ -61,7 +62,7 @@ public class CMinerHDFSTest {
             while ((logLine = reader.readLine()) != null) {
             	FileAccessLog log = FileAccessLog.parse(logLine);
             	if(log.isValid()){
-            		logs.add(log);
+            		logs.add(log.getSrc().split("/user/root/input/sogou/query-log-")[1]);
             	}
             }
         } 
@@ -91,23 +92,20 @@ public class CMinerHDFSTest {
 		miner.setWindowSize(26);
 		
 		// 读取文件
-		List<FileAccessLog> logs = getLogs(filePath);
+		List<String> logs = getLogs(filePath);
 		miner.setInputSequence(logs);
 		System.out.println("** input sequence:");
-		for(int i = 0; i < logs.size(); i++){
-			logs.get(i).setSrc(logs.get(i).getSrc().split("/user/root/input/sogou/query-log-")[1]);
-			System.out.print(logs.get(i).getSrc() + ", ");
-		}
+		System.out.println(logs);
 		System.out.println();
 		
 		// 对文件访问日志分段
 		miner.cutAccessSequence();
 		System.out.println("** input segments:");
-		List<List<FileAccessLog>> segments = miner.getInputSegments();
+		List<List<String>> segments = miner.getInputSegments();
 		for(int i = 0; i < segments.size(); i++){
-			List<FileAccessLog> segment = segments.get(i);
+			List<String> segment = segments.get(i);
 			for(int j = 0; j < segment.size(); j++){
-				System.out.print(segment.get(j).getSrc() + " ");
+				System.out.print(segment.get(j) + " ");
 			}
 			System.out.print(", ");
 		}

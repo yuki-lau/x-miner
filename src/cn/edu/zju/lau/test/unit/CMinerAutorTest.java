@@ -1,19 +1,20 @@
-package cn.edu.zju.lau.test;
+package cn.edu.zju.lau.test.unit;
 
 import java.util.Map;
 
-import cn.edu.zju.lau.cminer.impl.CMinerYuki;
+import cn.edu.zju.lau.cminer.impl.CMinerAuthor;
 import cn.edu.zju.lau.cminer.model.Rule;
+import cn.edu.zju.lau.cminer.model.SubsequenceSuffix;
 import cn.edu.zju.lau.utils.Utils;
 
 /**
- * CMinerYuki测试类
+ * CMinerAutor测试类
  * @author yuki
- * @date 2013-11-06
+ * @date 2013-11-15
  */
-public class CMinerYukiTest {
+public class CMinerAutorTest {
 
-	private static CMinerYuki miner = new CMinerYuki();
+	private static CMinerAuthor miner = new CMinerAuthor();
 	
 	public static void main(String[] args){
 
@@ -46,10 +47,15 @@ public class CMinerYukiTest {
 		miner.setInputSequeuece(sequence);
 		
 		long start = System.currentTimeMillis();
-		miner.cutAccessSequence();			// 分段：对初始访问序列
-		miner.candidateFreSubsequences();	// 挖掘：频繁子序列
-		miner.closedFreSubsequences();		// 过滤：Closed频繁子序列
-		miner.generateRules();				// 生成：关联规则
+		miner.cutAccessSequence();		// 分段：对初始访问序列
+		miner.generateFirstDs();		// 获取长度为1的频繁序列
+		
+		// 挖掘：频繁子序列
+		SubsequenceSuffix ss = miner.getSeqFromDs();
+		miner.candidateFreSubsequences(ss.getSubsequence(), ss.getOccurTimes());
+		
+		miner.closedFreSubsequences();	// 过滤：Closed频繁子序列
+		miner.generateRules();			// 生成：关联规则
 		long end = System.currentTimeMillis();
 		
 		System.out.println("\n======== Generating Correlation Rules ========");

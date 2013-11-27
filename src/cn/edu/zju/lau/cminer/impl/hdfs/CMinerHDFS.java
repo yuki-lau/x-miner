@@ -1,4 +1,4 @@
-package cn.edu.zju.lau.cminer.impl;
+package cn.edu.zju.lau.cminer.impl.hdfs;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,9 +10,8 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
-import cn.edu.zju.lau.cminer.model.FileAccessLog;
-import cn.edu.zju.lau.cminer.model.HDFSRule;
-import cn.edu.zju.lau.cminer.model.HDFSSubseqSuffix;
+import cn.edu.zju.lau.cminer.model.hdfs.HDFSRule;
+import cn.edu.zju.lau.cminer.model.hdfs.HDFSSubseqSuffix;
 
 /**
  * 挖掘HDFS Audit Log中文件访问的关联关系
@@ -29,8 +28,8 @@ public class CMinerHDFS{
 	protected int minSupport;			// 频繁序列的最小出现次数
 	protected float minConfidence;		// 关联规则的最小confidence，confidence(a->b) = support(b)/support(a)
 	
-	protected List<FileAccessLog> inputSequence;			// 文件访问序列
-	protected List<List<FileAccessLog>> inputSegments;		// 文件访问序列的分段，每段长度为windowSize
+	protected List<String> inputSequence;					// 文件访问序列
+	protected List<List<String>> inputSegments;		// 文件访问序列的分段，每段长度为windowSize
 	protected Map<String, Integer> freSubsequences;			// 候选频繁子序列，对应其出现的次数
 	protected Map<String, Integer> closedFreSubsequences;	// Closed频繁子序列
 	protected Map<String, HDFSRule> rules;					// 关联规则
@@ -52,8 +51,8 @@ public class CMinerHDFS{
 		minConfidence = 1.0F;
 		
 		// 创建对象
-		inputSequence = new ArrayList<FileAccessLog>();
-		inputSegments = new ArrayList<List<FileAccessLog>>();
+		inputSequence = new ArrayList<String>();
+		inputSegments = new ArrayList<List<String>>();
 		freSubsequences = new HashMap<String, Integer>();
 		closedFreSubsequences = new HashMap<String, Integer>();
 		rules = new HashMap<String, HDFSRule>();
@@ -63,7 +62,7 @@ public class CMinerHDFS{
 		maxSeqLength = 0;
 	}
 	
-	public CMinerHDFS(List<FileAccessLog> inputSequence, int windowSize, int maxGap, int minSupport, float minConfidence){
+	public CMinerHDFS(List<String> inputSequence, int windowSize, int maxGap, int minSupport, float minConfidence){
 		
 		this.inputSequence = inputSequence;
 		
@@ -74,7 +73,7 @@ public class CMinerHDFS{
 		this.minConfidence = minConfidence;
 		
 		// 创建对象
-		inputSegments = new ArrayList<List<FileAccessLog>>();
+		inputSegments = new ArrayList<List<String>>();
 		freSubsequences = new HashMap<String, Integer>();
 		closedFreSubsequences = new HashMap<String, Integer>();
 		rules = new HashMap<String, HDFSRule>();
@@ -103,7 +102,7 @@ public class CMinerHDFS{
 			
 			// 开始一个新窗口
 			if(i / windowSize > winNum){
-				List<FileAccessLog> newWindow = new ArrayList<FileAccessLog>();
+				List<String> newWindow = new ArrayList<String>();
 				newWindow.add(inputSequence.get(i));
 				inputSegments.add(newWindow);
 				winNum = i / windowSize;
@@ -126,10 +125,10 @@ public class CMinerHDFS{
 		
 		// 统计每个文件访问的次数，同时记录suffix
 		for(int i = 0; i < inputSegments.size();i++){
-			List<FileAccessLog> segment = inputSegments.get(i);
+			List<String> segment = inputSegments.get(i);
 			
 			for(int k = 0; k < segment.size(); k++){
-				String currentFile = segment.get(k).getSrc();
+				String currentFile = segment.get(k);
 				
 				// 统计每个文件出现的次数
 				Integer count = fileAccessTimes.get(currentFile) == null ? 0 : fileAccessTimes.get(currentFile);
@@ -138,7 +137,7 @@ public class CMinerHDFS{
 				// 判断当前文件在当前窗口中是否被统计过
 				int start = 0;
 				for(; start < segment.size() && start < k; start++){
-					if(currentFile.equalsIgnoreCase(segment.get(start).getSrc())){
+					if(currentFile.equalsIgnoreCase(segment.get(start))){
 						break;
 					}
 				}
@@ -149,7 +148,7 @@ public class CMinerHDFS{
 				// 记录suffix
 				StringBuilder suffix = new StringBuilder();
 				for(int j = start + 1; j < segment.size(); j++){
-					suffix.append(segment.get(j).getSrc()).append("|");
+					suffix.append(segment.get(j)).append("|");
 				}
 				if(Ds.get(currentFile) == null){
 					Ds.put(currentFile, new HDFSSubseqSuffix());
@@ -515,18 +514,18 @@ public class CMinerHDFS{
 		this.minConfidence = minConfidence;
 	}
 
-	public List<FileAccessLog> getInputSequence() {
+	public List<String> getInputSequence() {
 		return inputSequence;
 	}
 
-	public void setInputSequence(List<FileAccessLog> inputSequence) {
+	public void setInputSequence(List<String> inputSequence) {
 		this.inputSequence.addAll(inputSequence);
 	}
 
 	
 	/* 中间结果的getters */
 	
-	public List<List<FileAccessLog>> getInputSegments() {
+	public List<List<String>> getInputSegments() {
 		return inputSegments;
 	}
 

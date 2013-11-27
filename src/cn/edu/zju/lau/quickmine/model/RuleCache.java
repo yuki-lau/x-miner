@@ -50,7 +50,6 @@ public class RuleCache {
 		return isNewRule;
 	}
 
-	
 	/* getters and setters */
 	
 	public LRUCache<String, SuffixList> getRules() {

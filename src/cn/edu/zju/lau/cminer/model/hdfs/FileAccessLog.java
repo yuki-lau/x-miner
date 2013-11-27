@@ -1,4 +1,4 @@
-package cn.edu.zju.lau.cminer.model;
+package cn.edu.zju.lau.cminer.model.hdfs;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

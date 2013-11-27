@@ -1,4 +1,4 @@
-package cn.edu.zju.lau.cminer.model;
+package cn.edu.zju.lau.cminer.model.hdfs;
 
 import java.util.List;
 

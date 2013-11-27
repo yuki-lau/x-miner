@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.zju.lau.quickmine.model.RuleCache;
+import cn.edu.zju.lau.quickmine.model.Suffix;
+import cn.edu.zju.lau.quickmine.model.SuffixList;
 
 /**
  * 实现论文《Context-Aware Prefetching at the Storage Server》中阐述的挖掘Block访问关联性的方法。
@@ -15,7 +17,6 @@ public class QuickMine {
 	private int maxGap;					// 关联序列间的最大间隔为maxGap j - i <= maxGap
 	private int maxPrefixNum;			// Rule Cache中对多的prefix数量
 	private int maxSuffixNum;			// Rule Cache中每个prefix对应的最多的suffix数量
-	private int prefetchNum;			// 每次prefetch时，fetch的最多suffix数量
 	private List<String> accessLogs;  	// 待挖掘的访问序列
 	private List<String> currentLogs;	// on-the-fly生成规则的过程中，需要保存的日志
 	private RuleCache ruleCache;		// 存放生成的关联规则
@@ -27,7 +28,6 @@ public class QuickMine {
 		this.maxGap = 5;
 		this.maxPrefixNum = 1024;
 		this.maxSuffixNum = 16;
-		this.prefetchNum = 4;
 		this.accessLogs = new ArrayList<String>();
 		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
@@ -37,7 +37,6 @@ public class QuickMine {
 		this.maxPrefixNum = maxPrefixNum;
 		this.maxSuffixNum = maxSuffixNum;
 		this.maxGap = 5;
-		this.prefetchNum = 4;
 		this.accessLogs = new ArrayList<String>();
 		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
@@ -47,7 +46,6 @@ public class QuickMine {
 		this.maxPrefixNum = maxPrefixNum;
 		this.maxSuffixNum = maxSuffixNum;
 		this.maxGap = maxGap;
-		this.prefetchNum = prefetchNum;
 		this.accessLogs = new ArrayList<String>();
 		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
@@ -111,6 +109,59 @@ public class QuickMine {
 		}
 	}
 	
+	/**
+	 * 根据prefix返回预测的后缀列表
+	 * @param prefix
+	 * @return
+	 */
+	public List<Suffix> getPredictSuffix(String prefix){
+		
+		List<Suffix> suffixList = new ArrayList<Suffix>();
+		SuffixList suffixes = ruleCache.getRules().get(prefix);
+		
+		if(suffixes != null){
+			suffixList.addAll(suffixes.getSuffixList());
+		}
+		
+		return suffixList;
+	}
+	
+	/* getters and setters */
+	
+	public int getMaxGap() {
+		return maxGap;
+	}
+
+	public void setMaxGap(int maxGap) {
+		this.maxGap = maxGap;
+	}
+
+	public List<String> getAccessLogs() {
+		return accessLogs;
+	}
+
+	public void setAccessLogs(List<String> accessLogs) {
+		this.accessLogs = accessLogs;
+	}
+
+	public List<String> getCurrentLogs() {
+		return currentLogs;
+	}
+	
+	public int getMaxPrefixNum() {
+		return maxPrefixNum;
+	}
+
+	public int getMaxSuffixNum() {
+		return maxSuffixNum;
+	}
+
+	public RuleCache getRuleCache() {
+		return ruleCache;
+	}
+
+	
+	/* test */
 	public static void main(String[] args){
 		
 		// 测试数据
@@ -139,48 +190,5 @@ public class QuickMine {
 		}
 		
 		System.out.println(miner.getRuleCache());	
-	}
-	
-	
-	/* getters and setters */
-	
-	public int getMaxGap() {
-		return maxGap;
-	}
-
-	public void setMaxGap(int maxGap) {
-		this.maxGap = maxGap;
-	}
-
-	public int getPrefetchNum() {
-		return prefetchNum;
-	}
-
-	public void setPrefetchNum(int prefetchNum) {
-		this.prefetchNum = prefetchNum;
-	}
-
-	public List<String> getAccessLogs() {
-		return accessLogs;
-	}
-
-	public void setAccessLogs(List<String> accessLogs) {
-		this.accessLogs = accessLogs;
-	}
-
-	public List<String> getCurrentLogs() {
-		return currentLogs;
-	}
-	
-	public int getMaxPrefixNum() {
-		return maxPrefixNum;
-	}
-
-	public int getMaxSuffixNum() {
-		return maxSuffixNum;
-	}
-
-	public RuleCache getRuleCache() {
-		return ruleCache;
 	}
 }
