@@ -12,11 +12,12 @@ import cn.edu.zju.lau.quickmine.model.RuleCache;
  */
 public class QuickMine {
 	
-	private int maxGap;					// 关联序列间的最大间隔 < maxGap
+	private int maxGap;					// 关联序列间的最大间隔为maxGap j - i <= maxGap
 	private int maxPrefixNum;			// Rule Cache中对多的prefix数量
 	private int maxSuffixNum;			// Rule Cache中每个prefix对应的最多的suffix数量
 	private int prefetchNum;			// 每次prefetch时，fetch的最多suffix数量
 	private List<String> accessLogs;  	// 待挖掘的访问序列
+	private List<String> currentLogs;	// on-the-fly生成规则的过程中，需要保存的日志
 	private RuleCache ruleCache;		// 存放生成的关联规则
 	
 	/**
@@ -28,6 +29,7 @@ public class QuickMine {
 		this.maxSuffixNum = 16;
 		this.prefetchNum = 4;
 		this.accessLogs = new ArrayList<String>();
+		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
 	}
 	
@@ -37,6 +39,7 @@ public class QuickMine {
 		this.maxGap = 5;
 		this.prefetchNum = 4;
 		this.accessLogs = new ArrayList<String>();
+		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
 	}
 	
@@ -46,10 +49,14 @@ public class QuickMine {
 		this.maxGap = maxGap;
 		this.prefetchNum = prefetchNum;
 		this.accessLogs = new ArrayList<String>();
+		this.currentLogs = new ArrayList<String>();
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
 	}
 
-	public void startMining(){
+	/**
+	 * 批量挖掘关联规则：根据所有的访问日志，生成所有的规则。
+	 */
+	public void miningByBatch(){
 		
 		// 检查输入日志序列
 		if(accessLogs == null || accessLogs.size() == 0){
@@ -57,14 +64,14 @@ public class QuickMine {
 			return;
 		}
 		
-		// 根据规则 Ai & Aj -> Ak, i < j < k, j - i < maxGap, k - j < maxGap 生成规则
+		// 根据规则 Ai & Aj -> Ak, i < j < k, j - i <= maxGap, k - j <= maxGap 生成规则
 		for(int i = 0; i < accessLogs.size() - 2; i++){
 			
-			for(int j = i + 1; j < maxGap + i && j < accessLogs.size() - 1; j++){
+			for(int j = i + 1; j <= maxGap + i && j < accessLogs.size() - 1; j++){
 				
 				String prefix = accessLogs.get(i) + "|" + accessLogs.get(j);
 				
-				for(int k = j + 1; k < maxGap + j && k < accessLogs.size(); k++){
+				for(int k = j + 1; k <= maxGap + j && k < accessLogs.size(); k++){
 					
 					String suffix = accessLogs.get(k);
 					ruleCache.addRule(prefix, suffix);
@@ -73,9 +80,40 @@ public class QuickMine {
 		}
 	}
 	
+	/**
+	 * 增量挖掘关联规则: 添加一个新的访问记录，同时生成新rule。保证线程同步。
+	 * 
+	 * @param log
+	 */
+	public synchronized void miningByStep(String log){
+		
+		int maxSize = 2 * maxGap + 1;
+				
+		// 如果currentLogs.size < maxSize, 则直接添加新log
+		if(currentLogs.size() < maxSize){
+			currentLogs.add(log);
+		}
+		// 如果currentLogs.size >= maxSize, 则需要剔除最老的log，再添加新log
+		else{
+			currentLogs.remove(0);
+			currentLogs.add(log);
+		}
+		
+		// 根据规则 Ai & Aj -> Ak, i < j < k, j - i <= maxGap, k - j <= maxGap 生成新规则
+		// 从后向前，确定maxGap的区间找prefix
+		int lastPos = currentLogs.size() - 1;
+		for(int j = lastPos - 1; j >= lastPos - maxGap && j >= 1; j --){
+		
+			for(int i = j - 1; i >= j - maxGap && i >= 0; i--){
+				String prefix = currentLogs.get(i) + "|" + currentLogs.get(j);
+				ruleCache.addRule(prefix, log);
+			}
+		}
+	}
+	
 	public static void main(String[] args){
 		
-		QuickMine miner = new QuickMine();
+		// 测试数据
 		List<String> logs = new ArrayList<String>();
 		logs.add("a");
 		logs.add("b");
@@ -87,22 +125,22 @@ public class QuickMine {
 		logs.add("h");
 		logs.add("i");
 		logs.add("j");
-		logs.add("a");
-		logs.add("b");
-		logs.add("c");
-		logs.add("d");
-		logs.add("e");
-		logs.add("f");
-		logs.add("g");
-		logs.add("h");
-		logs.add("i");
-		logs.add("j");
-		miner.setAccessLogs(logs);
-		miner.startMining();
 		
-		System.out.println(logs);
-		System.out.println(miner.getRuleCache());
+		QuickMine miner = new QuickMine();
+		miner.setMaxGap(3);
+		
+		// 批量挖掘关联规则
+//		miner.setAccessLogs(logs);
+//		miner.miningByBatch();
+		
+		// 增量挖掘关联规则
+		for(int i = 0; i < logs.size(); i++){
+			miner.miningByStep(logs.get(i));		
+		}
+		
+		System.out.println(miner.getRuleCache());	
 	}
+	
 	
 	/* getters and setters */
 	
@@ -130,6 +168,10 @@ public class QuickMine {
 		this.accessLogs = accessLogs;
 	}
 
+	public List<String> getCurrentLogs() {
+		return currentLogs;
+	}
+	
 	public int getMaxPrefixNum() {
 		return maxPrefixNum;
 	}
