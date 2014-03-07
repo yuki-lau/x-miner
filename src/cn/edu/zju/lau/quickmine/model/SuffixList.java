@@ -55,28 +55,33 @@ public class SuffixList {
 		}
 		
 		
-		Integer pos = key2Position.get(suffixName);
+		Integer posObj = key2Position.get(suffixName);
 
 		// suffixName第一次添加
-		if(pos == null){
+		if(posObj == null){
 			int tailPos = suffixList.size() - 1;
 			boolean insert = false;
 			for(int i = tailPos; i >= 0; i--){
 				if(1 < suffixList.get(i).getSupport()){
 					insert = true;
 					suffixList.add(i + 1, new Suffix(suffixName, 1));
-					updateKey2Pos(suffixName, i + 1);
+					updateKey2Pos(suffixName, Integer.MAX_VALUE, i + 1);
 					break;
 				}
 			}
 			if(!insert){
 				suffixList.add(0, new Suffix(suffixName, 1));
-				updateKey2Pos(suffixName, 0);
+				updateKey2Pos(suffixName, Integer.MAX_VALUE, 0);
 			}
 			
 		}
 		// suffixName非第一次添加
 		else{
+			// important! pos is an Integer Object, if we do not cast it to int.
+			// then, it will use pos as an List element when we use List.remove(pos).
+			int pos = posObj.intValue();
+			
+			
 			int newSupport = suffixList.get(pos).getSupport() + 1;
 			boolean insert = false;
 			for(int i = pos; i >= 0; i--){
@@ -84,14 +89,14 @@ public class SuffixList {
 					insert = true;
 					suffixList.remove(pos);
 					suffixList.add(i + 1, new Suffix(suffixName, newSupport));
-					updateKey2Pos(suffixName, i + 1);
+					updateKey2Pos(suffixName, pos, i + 1);
 					break;
 				}
 			}
 			if(!insert){
 				suffixList.remove(pos);
 				suffixList.add(0, new Suffix(suffixName, newSupport));
-				updateKey2Pos(suffixName, 0);
+				updateKey2Pos(suffixName, pos, 0);
 			}
 		}
 		
@@ -108,11 +113,13 @@ public class SuffixList {
 	 * @param suffixName
 	 * @param newPos
 	 */
-	private void updateKey2Pos(String suffixName, Integer newPos){
+	private void updateKey2Pos(String suffixName, int oldPos, int newPos){
 		
+		if(oldPos == newPos){
+			return;
+		}
 		for(Map.Entry<String, Integer> entry: key2Position.entrySet()){
-			
-			if(entry.getValue() >= newPos){
+			if(entry.getValue() >= newPos && entry.getValue() < oldPos){
 				key2Position.put(entry.getKey(), entry.getValue() + 1);
 			}
 		}

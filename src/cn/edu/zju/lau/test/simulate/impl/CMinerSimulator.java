@@ -122,35 +122,57 @@ public class CMinerSimulator extends Simulator{
 	 */
 	public static void main(String[] args){
 		
-		int fileCacheSize = 45;
-		CMinerSimulator simulator = new CMinerSimulator(fileCacheSize);
-		
-		// 获取数据集
-		List<String> logs = simulator.getDataSet("D://audit.log", "/user/root/input/sogou/query-log-");
-		
-		// 生成关联规则
-		simulator.setDataSet(logs);
-		simulator.generateRules();
-		
-		// 模拟读取数据，利用关联规则提高Cache命中率
-		int hitCount = 0;
-		for(int i = 0; i< logs.size(); i++){
+		for(int fileCacheSize = 1; fileCacheSize <= 50; fileCacheSize++){
+				
+			CMinerSimulator simulator = new CMinerSimulator(fileCacheSize);
 			
-			String currentFile = logs.get(i);
+			// 获取数据集
+			List<String> logs = simulator.getDataSet("D://audit-interleaving.log", "/user/root/input/sogou/query-log-");
 			
-			// Miss
-			if(simulator.getFileFromCache(currentFile) == null){
-				for(String file: simulator.getPredictFiles(currentFile)){
-					simulator.putFileIntoCache(file, file);
+			// 生成关联规则
+			simulator.setDataSet(logs);
+			simulator.generateRules();
+			
+			// 模拟读取数据，利用关联规则提高Cache命中率
+			int hitCount = 0;
+			int prefetchCount = 0;
+			long totalTime = 0;
+			for(int i = 0; i< logs.size(); i++){
+				
+				String currentFile = logs.get(i);
+				
+				long start = System.nanoTime();
+				String targetFile = simulator.getFileFromCache(currentFile);
+				// Miss
+				if(targetFile == null){
+					// time of getting file from disk
+//					try {
+//						Thread.sleep(1);
+//					} 
+//					catch (InterruptedException e) {
+//						e.printStackTrace();
+//					}
+					
+					// read miss causes prediction
+					for(String file: simulator.getPredictFiles(currentFile)){
+						simulator.putFileIntoCache(file, file);
+						prefetchCount++;
+					}
 				}
+				// Hit
+				else{
+					hitCount++;
+				}
+				long end = System.nanoTime();
+				
+				totalTime += (end - start);
 			}
-			// Hit
-			else{
-				hitCount++;
-			}
+			
+			// 输出命中率
+			// System.out.println("CMiner Hit Ratio: " + (hitCount * 1.0 / logs.size()));
+			System.out.println(hitCount * 1.0 / logs.size());
+			// System.out.println(prefetchCount);
+			// System.out.println(totalTime * 1.0 / logs.size() / 1000000);
 		}
-		
-		// 输出命中率
-		System.out.println("CMiner Hit Ratio: " + (hitCount * 1.0 / logs.size()));
 	}
 }

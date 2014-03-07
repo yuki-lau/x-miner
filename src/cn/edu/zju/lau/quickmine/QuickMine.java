@@ -42,7 +42,7 @@ public class QuickMine {
 		this.ruleCache = new RuleCache(this.maxPrefixNum, this.maxSuffixNum);
 	}
 	
-	public QuickMine(int maxPrefixNum, int maxSuffixNum, int maxGap, int prefetchNum){
+	public QuickMine(int maxPrefixNum, int maxSuffixNum, int maxGap){
 		this.maxPrefixNum = maxPrefixNum;
 		this.maxSuffixNum = maxSuffixNum;
 		this.maxGap = maxGap;
@@ -101,10 +101,19 @@ public class QuickMine {
 		// 从后向前，确定maxGap的区间找prefix
 		int lastPos = currentLogs.size() - 1;
 		for(int j = lastPos - 1; j >= lastPos - maxGap && j >= 1; j --){
-		
+			// 类似  a|b -> b 这种规则不生成
+			if(currentLogs.get(j).equals(log)){
+				continue;
+			}
+			
 			for(int i = j - 1; i >= j - maxGap && i >= 0; i--){
-				String prefix = currentLogs.get(i) + "|" + currentLogs.get(j);
-				ruleCache.addRule(prefix, log);
+				
+				// 类似 a|b -> a 这种规则不生成
+				if(currentLogs.get(i).equals(log)){
+					continue;
+				}
+				
+				ruleCache.addRule(currentLogs.get(i) + "|" + currentLogs.get(j), log);
 			}
 		}
 	}

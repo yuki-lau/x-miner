@@ -21,14 +21,14 @@ public class QuickMineSimulator extends Simulator{
 	/**
 	 * 默认参数：
 	 * 		Prefetch Number: 3
-	 * 		QuickMine: maxPrefixNum = 1024, maxSuffixNum = 8, maxGap = 3, prefetchNum = 3
+	 * 		QuickMine: maxPrefixNum = 1024, maxSuffixNum = 8, maxGap = 3
 	 */
 	protected QuickMineSimulator(int fileCacheSize) {
 		
 		super(fileCacheSize);
 		
 		this.prefetchNum = 3;
-		this.miner = new QuickMine(1024, 8, 3, 3);
+		this.miner = new QuickMine(1024, 8, 3);
 	}
 
 	/**
@@ -76,36 +76,51 @@ public class QuickMineSimulator extends Simulator{
 	 */
 	public static void main(String[] args){
 		
-		int fileCacheSize = 1024;
-		QuickMineSimulator simulator = new QuickMineSimulator(fileCacheSize);
-		
-		// 获取数据集
-		List<String> logs = simulator.getDataSet("D://audit.log", "/user/root/input/sogou/query-log-");
-		
-		// 生成关联规则：QuickMine 不需要预先生成关联规则
-		
-		// 模拟读取数据，利用关联规则提高Cache命中率
-		int hitCount = 0;
-		for(int i = 0; i< logs.size(); i++){
+		for(int fileCacheSize = 1; fileCacheSize <= 50; fileCacheSize++){
+				
+			QuickMineSimulator simulator = new QuickMineSimulator(fileCacheSize);
 			
-			String currentFile = logs.get(i);
+			// 获取数据集
+			List<String> logs = simulator.getDataSet("D://audit-interleaving.log", "/user/root/input/sogou/query-log-");
 			
-			// Miss
-			if(simulator.getFileFromCache(currentFile) == null){
-				for(String file: simulator.getPredictFiles(currentFile)){
-					simulator.putFileIntoCache(file, file);
+			// 生成关联规则：QuickMine 不需要预先生成关联规则
+			
+			// 模拟读取数据，利用关联规则提高Cache命中率
+			int hitCount = 0;
+			int prefetchCount = 0;
+			long totalTime = 0;
+			for(int i = 0; i< logs.size(); i++){
+				
+				String currentFile = logs.get(i);
+				
+				long start = System.nanoTime();
+				String targetFile = simulator.getFileFromCache(currentFile);
+				// Miss
+				if(targetFile == null){		
+					// read miss causes prediction
+					for(String file: simulator.getPredictFiles(currentFile)){
+						simulator.putFileIntoCache(file, file);
+						prefetchCount++;
+					}
 				}
-			}
-			// Hit
-			else{
-				hitCount++;
+				// Hit
+				else{
+					hitCount++;
+				}
+				
+				// generate new rules incrementally
+				simulator.generateNewRule(currentFile);
+				
+				long end = System.nanoTime();
+				
+				totalTime += (end - start);
 			}
 			
-			// generate new rules incrementally
-			simulator.generateNewRule(currentFile);
+			// 输出命中率
+			// System.out.println("QuickMine Hit Ratio: " + (hitCount * 1.0 / logs.size()));
+			System.out.println(hitCount * 1.0 / logs.size());
+			// System.out.println(prefetchCount);
+			// System.out.println(totalTime * 1.0 / logs.size() / 1000000);
 		}
-		
-		// 输出命中率
-		System.out.println("QuickMine Hit Ratio: " + (hitCount * 1.0 / logs.size()));
 	}
 }
