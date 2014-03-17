@@ -111,6 +111,7 @@ public class SuffixList {
 	/**
 	 * 更新key2position中文件名与位置的映射关系，将newPos之后的元素都依次后移一位
 	 * @param suffixName
+	 * @param oldPos
 	 * @param newPos
 	 */
 	private void updateKey2Pos(String suffixName, int oldPos, int newPos){
